@@ -13,6 +13,7 @@ class FootballScoreScreen extends StatefulWidget {
 class _FootballScoreScreenState extends State<FootballScoreScreen> {
   List<FootballMatchScoreModel> matchList = [];
   FirebaseFirestore firebaseFirestore = FirebaseFirestore.instance;
+
   Future<void> _getFootballMatchScoreData() async {
     matchList.clear();
     final QuerySnapshot result =
@@ -20,13 +21,14 @@ class _FootballScoreScreenState extends State<FootballScoreScreen> {
     for (QueryDocumentSnapshot doc in result.docs) {
       matchList.add(
         FootballMatchScoreModel(
-          doc.get('team1name'),
-          doc.get('team1score'),
-          doc.get('team2score'),
-          doc.get('team2score'),
+          doc.get('team1name') as String,
+          doc.get('team1score') as int,
+          doc.get('team2name') as String,
+          doc.get('team2score') as int,
         ),
       );
     }
+    setState(() {});
   }
 
   @override
@@ -45,15 +47,47 @@ class _FootballScoreScreenState extends State<FootballScoreScreen> {
         ),
         backgroundColor: Colors.blue,
       ),
-      body: ListView.builder(
-          itemCount: matchList.length,
-          itemBuilder: (context, index) {
-            return FootballMatchScoreCard(matchList[index]);
+      body: StreamBuilder(
+          stream: firebaseFirestore.collection('football').snapshots(),
+          builder: (context,
+              AsyncSnapshot<QuerySnapshot<Map<String, dynamic>>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(snapshot.error.toString()),
+              );
+            }
+            if (snapshot.hasData == false) {
+              return const Center(
+                child: Text('No Data Found'),
+              );
+            }
+
+            matchList.clear();
+            for (QueryDocumentSnapshot doc in snapshot.data?.docs ?? []) {
+              matchList.add(
+                FootballMatchScoreModel(
+                  doc.get('team1name') as String,
+                  doc.get('team1score') as int,
+                  doc.get('team2name') as String,
+                  doc.get('team2score') as int,
+                ),
+              );
+            }
+            return ListView.builder(
+                itemCount: matchList.length,
+                itemBuilder: (context, index) {
+                  return footballMatchScoreCard(matchList[index]);
+                });
           }),
     );
   }
 
-  Widget FootballMatchScoreCard(FootballMatchScoreModel model) {
+  Widget footballMatchScoreCard(FootballMatchScoreModel model) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Card(
